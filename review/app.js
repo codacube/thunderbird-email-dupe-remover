@@ -4,7 +4,8 @@ let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const folderId = window.location.hash.substring(1);
+  // Remove URL encoding from the folder name
+  const folderId = decodeURIComponent(window.location.hash.substring(1));
 
   if (!folderId) {
     updateStatus("Error: No folder selected.");
@@ -111,7 +112,7 @@ function renderBatch() {
         <div class="details">
           <div><strong>${msg.author}</strong></div>
           <div class="meta">${new Date(
-            msg.date
+            msg.date,
           ).toLocaleString()} &bull; Folder: ${msg.folder.name}</div>
         </div>
         <div class="badge">${isKeeper ? "Keep (Oldest)" : "Delete"}</div>
@@ -139,7 +140,7 @@ function renderBatch() {
 async function processBatch() {
   const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
   const idsToDelete = Array.from(checkboxes).map((cb) =>
-    parseInt(cb.getAttribute("data-msg-id"))
+    parseInt(cb.getAttribute("data-msg-id")),
   );
 
   if (idsToDelete.length > 0) {
