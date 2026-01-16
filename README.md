@@ -5,7 +5,8 @@
 - Install the plugin
 - Right click a folder and select 'Scan for Duplicates'
 - Deleted emails are moved to Trash
-- IMPORTANT: Use at your own risk, I am not liable for any issues you might encounter!
+- **IMPORTANT:** It goes without saying, but I'll say it: Use at your own risk. I provide no guarantees that this plugin works 100% correctly, and I am not liable for any issues or data loss you might encounter!
+- Enjoy! :-D
 
 ## TODO
 
