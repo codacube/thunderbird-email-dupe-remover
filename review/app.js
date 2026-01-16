@@ -138,27 +138,46 @@ function renderBatch() {
 }
 
 async function processBatch() {
+  const btnProcess = document.getElementById("btn-process");
+  const btnCancel = document.getElementById("btn-cancel");
+
+  document.body.style.cursor = "wait";
+  btnProcess.disabled = true;
+  btnCancel.disabled = true;
+  btnProcess.textContent = "Processing...";
+
   const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
   const idsToDelete = Array.from(checkboxes).map((cb) =>
     parseInt(cb.getAttribute("data-msg-id")),
   );
 
-  if (idsToDelete.length > 0) {
-    updateStatus(`Deleting ${idsToDelete.length} messages...`);
+  try {
+    if (idsToDelete.length > 0) {
+      updateStatus(`Deleting ${idsToDelete.length} messages...`);
 
-    // Perform Delete
-    await messenger.messages.delete(idsToDelete);
+      // Perform Delete
+      await messenger.messages.delete(idsToDelete);
+    }
+
+    // Move index forward
+    currentBatchIndex += BATCH_SIZE;
+
+    // Re-render next batch
+    renderBatch();
+    updateStatus("Batch processed. Ready for next.");
+
+    // Scroll to top
+    document.getElementById("duplicate-list").scrollTop = 0;
+  } catch (err) {
+    console.error("Deletion failed:", err);
+    updateStatus("Error:" + err.message);
+    alert("Failed to delete messages. See console for details.");
+  } finally {
+    document.body.style.cursor = "default";
+    btnProcess.disabled = false;
+    btnCancel.disable = false;
+    btnProcess.textContent = "Delete Selected & Next";
   }
-
-  // Move index forward
-  currentBatchIndex += BATCH_SIZE;
-
-  // Re-render next batch
-  renderBatch();
-  updateStatus("Batch processed. Ready for next.");
-
-  // Scroll to top
-  document.getElementById("duplicate-list").scrollTop = 0;
 }
 
 function updateStatus(msg) {
