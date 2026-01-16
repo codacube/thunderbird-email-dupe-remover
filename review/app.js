@@ -4,7 +4,7 @@ let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Remove URL encoding from the folder name
+  // Tab is opened with foldername in the URL, remove URL encoding from the folder name
   const folderId = decodeURIComponent(window.location.hash.substring(1));
 
   if (!folderId) {
