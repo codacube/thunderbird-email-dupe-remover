@@ -232,7 +232,7 @@ async function processBatch() {
 
       // Perform Delete
       for (let i = 0; i < idsToDelete.length; i++) {
-        await messenger.messages.delete(idsToDelete[i]);
+        await messenger.messages.delete([idsToDelete[i]]);
 
         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
         setUiState(
@@ -242,7 +242,7 @@ async function processBatch() {
       }
     }
 
-    // Move to next batch
+    // Move to next batch, calculate state, then render
     currentBatchIndex += BATCH_SIZE;
 
     if (currentBatchIndex >= allDuplicateGroups.length) {
