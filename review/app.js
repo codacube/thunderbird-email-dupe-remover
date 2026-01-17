@@ -144,7 +144,7 @@ async function processBatch() {
   document.body.style.cursor = "wait";
   btnProcess.disabled = true;
   btnCancel.disabled = true;
-  btnProcess.textContent = "Processing...";
+  btnProcess.textContent = "Deleting...";
 
   const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
   const idsToDelete = Array.from(checkboxes).map((cb) =>
