@@ -57,7 +57,7 @@ function setUiState(newState, customMessage = null) {
 
     case AppState.FINISHED:
       body.style.cursor = "default";
-      btnProcess.disabled = true;
+      btnProcess.disabled = false;
       btnCancel.disabled = false;
       btnProcess.textContent = "Finished";
       break;
@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .getElementById("btn-process")
       .addEventListener("click", processBatch);
     document.getElementById("btn-cancel").addEventListener("click", () => {
-      messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
+      closeTab();
     });
   } catch (err) {
     setUiState(AppState.ERROR, "Error during scan: " + err.message);
@@ -211,6 +211,11 @@ function renderBatch() {
 async function processBatch() {
   // setUiState(AppState.DELETING, "Deleting selected messages...");
 
+  if (currentState === AppState.FINISHED) {
+    closeTab();
+    return;
+  }
+
   try {
     const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
     const idsToDelete = Array.from(checkboxes).map((cb) =>
@@ -247,3 +252,7 @@ async function processBatch() {
 // function updateStatus(msg) {
 //   document.getElementById("status-bar").textContent = msg;
 // }
+
+function closeTab() {
+  messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
+}
