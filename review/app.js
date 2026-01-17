@@ -2,23 +2,96 @@
 let allDuplicateGroups = []; // Array of arrays of messages
 let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
+const AppState = {
+  IDLE: "IDLE",
+  PROCESSING: "PROCESSING",
+  DELETING: "DELETING",
+  FINISHED: "FINISHED",
+  ERROR: "ERROR",
+};
+
+let currentState = AppState.IDLE;
+
+function setUiState(newState, customMessage = null) {
+  const statusBar = document.getElementById("status-bar");
+
+  if (newState === currentState) {
+    if (customMessage) {
+      statusBar.textContent = customMessage;
+      console.log(`[State Update] Still ${newState}: "${customMessage}"`);
+    }
+    return;
+  }
+
+  currentState = newState;
+  console.log(`[State Change] -> ${newState}`);
+
+  const btnProcess = document.getElementById("btn-process");
+  const btnCancel = document.getElementById("btn-cancel");
+  const body = document.body;
+
+  if (customMessage) statusBar.textContent = customMessage;
+
+  switch (newState) {
+    case AppState.IDLE:
+      body.style.cursor = "default";
+      btnProcess.disabled = false;
+      btnCancel.disabled = false;
+      btnProcess.textContent = "Delete Selected & Next";
+      // btnProcess.classList.remove("error")
+      break;
+
+    case AppState.PROCESSING:
+      body.style.cursor = "wait";
+      btnProcess.disabled = true;
+      btnCancel.disabled = true;
+      btnProcess.textContent = "Processing...";
+      break;
+
+    case AppState.DELETING:
+      body.style.cursor = "wait";
+      btnProcess.disabled = true;
+      btnCancel.disabled = true;
+      btnProcess.textContent = "Deleting...";
+      break;
+
+    case AppState.FINISHED:
+      body.style.cursor = "default";
+      btnProcess.disabled = false;
+      btnCancel.disabled = false;
+      btnProcess.textContent = "Finished";
+      break;
+
+    case AppState.ERROR:
+      body.style.cursor = "default";
+      btnProcess.disabled = false;
+      btnCancel.disabled = false;
+      btnProcess.textContent = "Retry Deletion";
+      // btnProcess.classList.add("error")
+      console.error("Error State:", customMessage);
+      break;
+  }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Tab is opened with foldername in the URL, remove URL encoding from the folder name
   const folderId = decodeURIComponent(window.location.hash.substring(1));
 
   if (!folderId) {
-    updateStatus("Error: No folder selected.");
+    setUiState(AppState.ERROR, "Error: No folder selected.");
     return;
   }
 
-  updateStatus("Scanning folder... this may take a moment.");
+  setUiState(AppState.PROCESSING, "Scanning folder... this may take a moment.");
   try {
     const folder = await messenger.folders.get(folderId);
     const messages = await fetchAllMessages(folder);
     allDuplicateGroups = detectDuplicates(messages);
 
-    updateStatus(`Found ${allDuplicateGroups.length} groups of duplicates.`);
+    setUiState(
+      AppState.IDLE,
+      `Found ${allDuplicateGroups.length} groups of duplicates.`,
+    );
 
     renderBatch();
 
@@ -26,11 +99,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       .getElementById("btn-process")
       .addEventListener("click", processBatch);
     document.getElementById("btn-cancel").addEventListener("click", () => {
-      messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
+      closeTab();
     });
   } catch (err) {
-    console.error(err);
-    updateStatus("Error during scan: " + err.message);
+    setUiState(AppState.ERROR, "Error during scan: " + err.message);
   }
 });
 
@@ -79,8 +151,7 @@ function renderBatch() {
   if (batch.length === 0) {
     container.innerHTML =
       "<div style='text-align:center; padding:40px;'><h3>All Done!</h3><p>No more duplicates found.</p></div>";
-    document.getElementById("btn-process").disabled = true;
-    document.getElementById("btn-process").textContent = "Finished";
+    setUiState(AppState.FINISHED, "All done! No more duplicates.");
     return;
   }
 
@@ -138,29 +209,61 @@ function renderBatch() {
 }
 
 async function processBatch() {
-  const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
-  const idsToDelete = Array.from(checkboxes).map((cb) =>
-    parseInt(cb.getAttribute("data-msg-id")),
-  );
-
-  if (idsToDelete.length > 0) {
-    updateStatus(`Deleting ${idsToDelete.length} messages...`);
-
-    // Perform Delete
-    await messenger.messages.delete(idsToDelete);
+  // Check if already finished and we need to exit
+  if (currentState === AppState.FINISHED) {
+    closeTab();
+    return;
   }
 
-  // Move index forward
-  currentBatchIndex += BATCH_SIZE;
+  setUiState(AppState.DELETING, "Deleting selected messages...");
 
-  // Re-render next batch
-  renderBatch();
-  updateStatus("Batch processed. Ready for next.");
+  try {
+    const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
 
-  // Scroll to top
-  document.getElementById("duplicate-list").scrollTop = 0;
+    const idsToDelete = Array.from(checkboxes).map((cb) =>
+      parseInt(cb.getAttribute("data-msg-id")),
+    );
+
+    if (idsToDelete.length > 0) {
+      setUiState(
+        AppState.DELETING,
+        `Deleting ${idsToDelete.length} messages...`,
+      );
+
+      // Perform Delete
+      for (let i = 0; i < idsToDelete.length; i++) {
+        await messenger.messages.delete([idsToDelete[i]]);
+
+        let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
+        setUiState(
+          AppState.DELETING,
+          `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
+        );
+      }
+    }
+
+    // Move to next batch, calculate state, then render
+    currentBatchIndex += BATCH_SIZE;
+
+    if (currentBatchIndex >= allDuplicateGroups.length) {
+      setUiState(AppState.FINISHED, "Completed, no more duplicates.");
+    } else {
+      setUiState(AppState.IDLE, "Batch processed. Ready for next.");
+      // Scroll to top
+      document.getElementById("duplicate-list").scrollTop = 0;
+    }
+
+    renderBatch();
+  } catch (err) {
+    setUiState(AppState.ERROR, "Error:" + err.message);
+    alert("Failed to delete messages.");
+  }
 }
 
-function updateStatus(msg) {
-  document.getElementById("status-bar").textContent = msg;
+// function updateStatus(msg) {
+//   document.getElementById("status-bar").textContent = msg;
+// }
+
+function closeTab() {
+  messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
 }
