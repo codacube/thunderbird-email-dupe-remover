@@ -209,15 +209,17 @@ function renderBatch() {
 }
 
 async function processBatch() {
-  // setUiState(AppState.DELETING, "Deleting selected messages...");
-
+  // Check if already finished and we need to exit
   if (currentState === AppState.FINISHED) {
     closeTab();
     return;
   }
 
+  setUiState(AppState.DELETING, "Deleting selected messages...");
+
   try {
     const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
+
     const idsToDelete = Array.from(checkboxes).map((cb) =>
       parseInt(cb.getAttribute("data-msg-id")),
     );
@@ -229,12 +231,19 @@ async function processBatch() {
       );
 
       // Perform Delete
-      await messenger.messages.delete(idsToDelete);
+      for (let i = 0; i < idsToDelete.length; i++) {
+        await messenger.messages.delete(idsToDelete[i]);
+
+        let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
+        setUiState(
+          AppState.DELETING,
+          `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
+        );
+      }
     }
 
     // Move to next batch
     currentBatchIndex += BATCH_SIZE;
-    renderBatch();
 
     if (currentBatchIndex >= allDuplicateGroups.length) {
       setUiState(AppState.FINISHED, "Completed, no more duplicates.");
@@ -243,6 +252,8 @@ async function processBatch() {
       // Scroll to top
       document.getElementById("duplicate-list").scrollTop = 0;
     }
+
+    renderBatch();
   } catch (err) {
     setUiState(AppState.ERROR, "Error:" + err.message);
     alert("Failed to delete messages.");
