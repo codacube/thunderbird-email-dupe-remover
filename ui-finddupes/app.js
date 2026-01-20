@@ -1,16 +1,17 @@
-// State Management
+let targetFolderId = null;
 let allDuplicateGroups = []; // Array of arrays of messages
 let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
 const AppState = {
+  WAITING_TO_START: "WAITING_TO_START",
   IDLE: "IDLE",
-  PROCESSING: "PROCESSING",
+  SCANNING: "SCANNING",
   DELETING: "DELETING",
   FINISHED: "FINISHED",
   ERROR: "ERROR",
 };
 
-let currentState = AppState.IDLE;
+let currentState = 0;
 
 function setUiState(newState, customMessage = null) {
   const statusBar = document.getElementById("status-bar");
@@ -26,6 +27,7 @@ function setUiState(newState, customMessage = null) {
   currentState = newState;
   console.log(`[State Change] -> ${newState}`);
 
+  const btnStart = document.getElementById("btn-start");
   const btnProcess = document.getElementById("btn-process");
   const btnCancel = document.getElementById("btn-cancel");
   const body = document.body;
@@ -33,19 +35,27 @@ function setUiState(newState, customMessage = null) {
   if (customMessage) statusBar.textContent = customMessage;
 
   switch (newState) {
+    case AppState.WAITING_TO_START:
+      body.style.cursor = "default";
+      btnStart.disabled = false;
+      btnProcess.disabled = true;
+      btnCancel.disabled = false;
+      btnProcess.textContent = "Delete Selected & Next";
+      break;
     case AppState.IDLE:
       body.style.cursor = "default";
+      btnStart.disabled = true;
       btnProcess.disabled = false;
       btnCancel.disabled = false;
       btnProcess.textContent = "Delete Selected & Next";
       // btnProcess.classList.remove("error")
       break;
 
-    case AppState.PROCESSING:
+    case AppState.SCANNING:
       body.style.cursor = "wait";
       btnProcess.disabled = true;
       btnCancel.disabled = true;
-      btnProcess.textContent = "Processing...";
+      btnProcess.textContent = "Scanning...";
       break;
 
     case AppState.DELETING:
@@ -75,17 +85,35 @@ function setUiState(newState, customMessage = null) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Tab is opened with foldername in the URL, remove URL encoding from the folder name
-  const folderId = decodeURIComponent(window.location.hash.substring(1));
+  targetFolderId = decodeURIComponent(window.location.hash.substring(1));
 
-  if (!folderId) {
+  if (!targetFolderId) {
     setUiState(AppState.ERROR, "Error: No folder selected.");
     return;
   }
 
-  setUiState(AppState.PROCESSING, "Scanning folder... this may take a moment.");
+  const folder = await messenger.folders.get(targetFolderId);
+  setUiState(AppState.WAITING_TO_START, `Ready to scan folder: ${folder.name}`);
+
+  document.getElementById("btn-start").addEventListener("click", startScan);
+
+  document
+    .getElementById("btn-process")
+    .addEventListener("click", processBatch);
+  document.getElementById("btn-cancel").addEventListener("click", () => {
+    closeTab();
+  });
+});
+
+async function startScan() {
+  const isRecursive = document.getElementById("include-subfolders").checked;
+
+  setUiState(AppState.SCANNING, "Scanning folder... this may take a moment.");
+
   try {
-    const folder = await messenger.folders.get(folderId);
-    const messages = await fetchAllMessages(folder);
+    const rootFolder = await messenger.folders.get(targetFolderId);
+
+    const messages = await fetchAllMessages(rootFolder, isRecursive);
     allDuplicateGroups = detectDuplicates(messages);
 
     setUiState(
@@ -93,26 +121,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       `Found ${allDuplicateGroups.length} groups of duplicates.`,
     );
 
+    currentBatchIndex = 0;
     renderBatch();
-
-    document
-      .getElementById("btn-process")
-      .addEventListener("click", processBatch);
-    document.getElementById("btn-cancel").addEventListener("click", () => {
-      closeTab();
-    });
   } catch (err) {
     setUiState(AppState.ERROR, "Error during scan: " + err.message);
   }
-});
+}
 
-async function fetchAllMessages(folder) {
+async function fetchAllMessages(folder, recursive) {
+  let messages = [];
+
+  setUiState(AppState.SCANNING, `Scanning: ${folder.name}...`);
   let page = await messenger.messages.list(folder);
-  let messages = page.messages;
+  messages.push(...page.messages);
   while (page.id) {
     page = await messenger.messages.continueList(page.id);
     messages.push(...page.messages);
   }
+
+  if (recursive) {
+    const subFolders = await messenger.folders.getSubFolders(folder);
+
+    for (const subFolder of subFolders) {
+      // JS runs on a single thread, to avoid UI freezing pause for 10ms
+      // to let the UI render the "Scanning <Folder Name>" update
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const childMessages = await fetchAllMessages(subFolder, true);
+      messages.push(...childMessages);
+    }
+  }
+
   return messages;
 }
 

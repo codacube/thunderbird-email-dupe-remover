@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -9,7 +9,13 @@
     <div class="container">
       <header>
         <h1>Duplicate Review</h1>
-        <div id="status-bar">Initializing...</div>
+        <div id="scan-controls" class="controls-bar">
+          <label class="toggle-label">
+            <input type="checkbox" id="include-subfolders" /> Include Subfolders
+          </label>
+          <button id="btn-start" class="primary">Start Scan</button>
+        </div>
+        <div id="status-bar">Waiting to start...</div>
       </header>
 
       <div id="duplicate-list"></div>
