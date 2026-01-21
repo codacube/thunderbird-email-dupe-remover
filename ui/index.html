@@ -1,15 +1,25 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Duplicate Review</title>
+    <title>Duplicate Email Review</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
       <header>
-        <h1>Duplicate Review</h1>
-        <div id="status-bar">Initializing...</div>
+        <h1>Duplicate Email Review</h1>
+
+        <div id="scan-controls" class="controls-bar">
+          <button id="btn-start" class="primary">Start Scan</button>
+          <label class="toggle-label">
+            <input type="checkbox" id="include-subfolders" /> Include Subfolders
+          </label>
+        </div>
+        <div class="status-wrapper">
+          <span class="status-label">Status:</span>
+          <span id="status-bar">Waiting to start...</span>
+        </div>
       </header>
 
       <div id="duplicate-list"></div>
@@ -20,7 +30,7 @@
           <span id="batch-end">0</span> of <span id="total-groups">0</span>
         </div>
         <div class="actions">
-          <button id="btn-cancel" class="secondary">Cancel / Close</button>
+          <button id="btn-cancel" class="secondary">Close</button>
           <button id="btn-process" class="primary">
             Delete Selected & Next
           </button>
