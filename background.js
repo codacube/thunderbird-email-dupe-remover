@@ -9,7 +9,7 @@ messenger.menus.onClicked.addListener(async (info, tab) => {
     // Open the review interface in a new tab, passing the folder ID in the URL hash so the UI knows what to scan
     let folderId = info.selectedFolder.id;
     messenger.tabs.create({
-      url: `ui-finddupes/index.html#${folderId}`,
+      url: `ui/index.html#${folderId}`,
       active: true,
     });
   }

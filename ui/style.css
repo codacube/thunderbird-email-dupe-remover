@@ -1,0 +1,238 @@
+html {
+  font-size: 62.5%; /* 1rem = 10px */
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: #f0f0f4;
+  margin: 0;
+  padding: 2rem;
+  color: #333;
+
+  /* Reset base text size to 16px */
+  font-size: 1.6rem;
+}
+
+.container {
+  max-width: 110rem;
+  margin: 0 auto;
+  background: white;
+  box-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.1);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 95vh; /* Full height window */
+}
+
+header {
+  padding: 2rem;
+  border-bottom: 1px solid #ddd;
+  background: #f9f9fa;
+}
+
+h1 {
+  margin: 0 0 1rem 0;
+  font-size: 2.4rem;
+}
+
+.controls-bar {
+  max-height: 10rem;
+  opacity: 1;
+  overflow: hidden;
+  transition: all 0.5s ease-in-out; /* Note results are delayed by 750ms in startScan */
+
+  padding: 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 1.5rem;
+}
+
+.controls-bar.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+}
+
+.status-wrapper {
+  margin-top: 1rem;
+  /* font-size: 1.4rem; */
+}
+
+.status-label {
+  font-weight: bold;
+  color: #333;
+  margin-right: 0.5rem;
+}
+
+#status-bar {
+  color: #0060df; /* Thunderbird Blue */
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+#status-bar.status-error {
+  color: #d70022; /* Standard error red */
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+#duplicate-list {
+  opacity: 0;
+  transform: translateY(2rem);
+  transition:
+    opacity 0.4s ease-out,
+    transform 0.4s ease-out;
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+#duplicate-list.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dupe-group {
+  border: 1px solid #e0e0e0;
+  border-radius: 0.6rem;
+  margin-bottom: 1.5rem;
+  background: #fff;
+}
+
+.group-header {
+  background: #f0f4ff;
+  padding: 1rem 1.5rem;
+  font-weight: bold;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.message-row {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #eee;
+  font-size: 1.4rem;
+}
+
+.message-row:last-child {
+  border-bottom: none;
+}
+
+.message-row.keep {
+  background-color: #f6fff6;
+}
+
+.message-row.delete {
+  background-color: #fff5f5;
+  text-decoration: line-through;
+  color: #888;
+}
+
+.details {
+  margin-left: 1.5rem;
+  flex: 1;
+}
+
+.meta {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+footer {
+  padding: 1.5rem 2rem;
+  background: #f9f9fa;
+  border-top: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+button {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font-size: 1.6rem;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #ccc;
+  color: #666;
+  box-shadow: none;
+  border-color: #bbb;
+  pointer-events: none;
+}
+
+.primary {
+  background: #0060df;
+  color: white;
+}
+.primary:hover {
+  background: #003eaa;
+}
+.primary:disabled {
+  background: #a0c0e8;
+  color: white;
+}
+.secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 55%;
+  }
+
+  body {
+    padding: 1rem; /* Reduce outer padding */
+  }
+
+  .container {
+    height: 100vh; /* Use full height on small screens */
+    border-radius: 0; /* Remove rounded corners to save space */
+  }
+
+  header,
+  footer,
+  #duplicate-list {
+    padding: 1.5rem; /* Tighter padding inside */
+  }
+
+  /* Stack the footer buttons if it gets REALLY narrow */
+  footer {
+    flex-direction: column-reverse; /* Put buttons on top */
+    gap: 1rem;
+  }
+
+  .actions {
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  button {
+    width: 100%; /* Make buttons full width for easier clicking */
+  }
+}

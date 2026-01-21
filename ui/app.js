@@ -13,8 +13,12 @@ const AppState = {
 
 let currentState = 0;
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function setUiState(newState, customMessage = null) {
   const statusBar = document.getElementById("status-bar");
+
+  statusBar.classList.remove("status-error");
 
   if (newState === currentState) {
     if (customMessage) {
@@ -27,6 +31,7 @@ function setUiState(newState, customMessage = null) {
   currentState = newState;
   console.log(`[State Change] -> ${newState}`);
 
+  const controls = document.getElementById("scan-controls");
   const btnStart = document.getElementById("btn-start");
   const btnProcess = document.getElementById("btn-process");
   const btnCancel = document.getElementById("btn-cancel");
@@ -35,6 +40,7 @@ function setUiState(newState, customMessage = null) {
   if (customMessage) statusBar.textContent = customMessage;
 
   switch (newState) {
+    // Waiting for user to press Start Scan
     case AppState.WAITING_TO_START:
       body.style.cursor = "default";
       btnStart.disabled = false;
@@ -42,22 +48,26 @@ function setUiState(newState, customMessage = null) {
       btnCancel.disabled = false;
       btnProcess.textContent = "Delete Selected & Next";
       break;
-    case AppState.IDLE:
-      body.style.cursor = "default";
-      btnStart.disabled = true;
-      btnProcess.disabled = false;
-      btnCancel.disabled = false;
-      btnProcess.textContent = "Delete Selected & Next";
-      // btnProcess.classList.remove("error")
-      break;
 
+    // Scanning for dupes
     case AppState.SCANNING:
+      controls.classList.add("collapsed");
       body.style.cursor = "wait";
       btnProcess.disabled = true;
       btnCancel.disabled = true;
       btnProcess.textContent = "Scanning...";
       break;
 
+    // Scan complete, waiting for user to process batch
+    case AppState.IDLE:
+      body.style.cursor = "default";
+      btnStart.disabled = true;
+      btnProcess.disabled = false;
+      btnCancel.disabled = false;
+      setTimeout(updateDeleteButton, 0); // Ensure DOM has rendered tickboxes before updating button
+      break;
+
+    // User pressed Delete Selected, processing deletions
     case AppState.DELETING:
       body.style.cursor = "wait";
       btnProcess.disabled = true;
@@ -65,19 +75,22 @@ function setUiState(newState, customMessage = null) {
       btnProcess.textContent = "Deleting...";
       break;
 
+    // All done
     case AppState.FINISHED:
+      controls.classList.add("hidden");
       body.style.cursor = "default";
       btnProcess.disabled = false;
       btnCancel.disabled = false;
       btnProcess.textContent = "Finished";
       break;
 
+    // Whoops, something went wrong
     case AppState.ERROR:
       body.style.cursor = "default";
       btnProcess.disabled = false;
       btnCancel.disabled = false;
       btnProcess.textContent = "Retry Deletion";
-      // btnProcess.classList.add("error")
+      statusBar.classList.add("status-error");
       console.error("Error State:", customMessage);
       break;
   }
@@ -92,8 +105,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const folder = await messenger.folders.get(targetFolderId);
-  setUiState(AppState.WAITING_TO_START, `Ready to scan folder: ${folder.name}`);
+  // Register all event listeners
+  document.getElementById("duplicate-list").addEventListener("change", (e) => {
+    if (e.target.matches(".dupe-checkbox")) {
+      updateDeleteButton();
+    }
+  });
 
   document.getElementById("btn-start").addEventListener("click", startScan);
 
@@ -103,12 +120,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-cancel").addEventListener("click", () => {
     closeTab();
   });
+
+  // Ready to start
+  const folder = await messenger.folders.get(targetFolderId);
+  setUiState(AppState.WAITING_TO_START, `Ready to scan folder: ${folder.name}`);
 });
 
 async function startScan() {
   const isRecursive = document.getElementById("include-subfolders").checked;
 
   setUiState(AppState.SCANNING, "Scanning folder... this may take a moment.");
+
+  // Wait for the controls-bar to disappear (transition set to 0.5s in CSS)
+  await wait(750);
 
   try {
     const rootFolder = await messenger.folders.get(targetFolderId);
@@ -172,50 +196,55 @@ function detectDuplicates(messages) {
   return Array.from(map.values()).filter((group) => group.length > 1);
 }
 
-function renderBatch() {
+async function renderBatch() {
   const container = document.getElementById("duplicate-list");
-  container.innerHTML = ""; // Clear current view
 
-  // Calculate slice
-  const start = currentBatchIndex;
-  const end = Math.min(start + BATCH_SIZE, allDuplicateGroups.length);
-  const batch = allDuplicateGroups.slice(start, end);
+  try {
+    container.classList.remove("visible");
+    await wait(150);
 
-  // Update Footer Stats
-  document.getElementById("batch-start").textContent = start + 1;
-  document.getElementById("batch-end").textContent = end;
-  document.getElementById("total-groups").textContent =
-    allDuplicateGroups.length;
+    container.innerHTML = ""; // Clear current view
 
-  if (batch.length === 0) {
-    container.innerHTML =
-      "<div style='text-align:center; padding:40px;'><h3>All Done!</h3><p>No more duplicates found.</p></div>";
-    setUiState(AppState.FINISHED, "All done! No more duplicates.");
-    return;
-  }
+    // Calculate slice
+    const start = currentBatchIndex;
+    const end = Math.min(start + BATCH_SIZE, allDuplicateGroups.length);
+    const batch = allDuplicateGroups.slice(start, end);
 
-  batch.forEach((group, index) => {
-    // Sort group by date (Oldest first)
-    group.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Update Footer Stats
+    document.getElementById("batch-start").textContent = start + 1;
+    document.getElementById("batch-end").textContent = end;
+    document.getElementById("total-groups").textContent =
+      allDuplicateGroups.length;
 
-    // The first one is the "Keeper", the rest are "Trash"
-    // We create a visual group for them
-    const groupDiv = document.createElement("div");
-    groupDiv.className = "dupe-group";
+    if (batch.length === 0) {
+      container.innerHTML =
+        "<div style='text-align:center; padding:40px;'><h3>All Done!</h3><p>No more duplicates found.</p></div>";
+      setUiState(AppState.FINISHED, "All done! No more duplicates.");
+      return;
+    }
 
-    // Header
-    const subject = group[0].subject || "(No Subject)";
-    groupDiv.innerHTML = `<div class="group-header"><span>${subject}</span> <span style="font-weight:normal; font-size:0.9em">${group.length} Copies</span></div>`;
+    batch.forEach((group, index) => {
+      // Sort group by date (Oldest first)
+      group.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    group.forEach((msg, i) => {
-      const isKeeper = i === 0; // Keep the oldest
-      const row = document.createElement("div");
-      row.className = `message-row ${isKeeper ? "keep" : "delete"}`;
+      // The first one is the "Keeper", the rest are "Trash"
+      // We create a visual group for them
+      const groupDiv = document.createElement("div");
+      groupDiv.className = "dupe-group";
 
-      // Checkbox Logic: Keepers unchecked, Deletions checked
-      const checked = isKeeper ? "" : "checked";
+      // Header
+      const subject = group[0].subject || "(No Subject)";
+      groupDiv.innerHTML = `<div class="group-header"><span>${subject}</span> <span style="font-weight:normal; font-size:0.9em">${group.length} Copies</span></div>`;
 
-      row.innerHTML = `
+      group.forEach((msg, i) => {
+        const isKeeper = i === 0; // Keep the oldest
+        const row = document.createElement("div");
+        row.className = `message-row ${isKeeper ? "keep" : "delete"}`;
+
+        // Checkbox Logic: Keepers unchecked, Deletions checked
+        const checked = isKeeper ? "" : "checked";
+
+        row.innerHTML = `
         <input type="checkbox" class="dupe-checkbox" data-msg-id="${
           msg.id
         }" ${checked}>
@@ -228,23 +257,40 @@ function renderBatch() {
         <div class="badge">${isKeeper ? "Keep (Oldest)" : "Delete"}</div>
       `;
 
-      // Allow user to toggle styling when clicking checkbox
-      const checkbox = row.querySelector("input");
-      checkbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          row.classList.remove("keep");
-          row.classList.add("delete");
-        } else {
-          row.classList.remove("delete");
-          row.classList.add("keep");
-        }
+        // Allow user to toggle styling when clicking checkbox
+        const checkbox = row.querySelector("input");
+        checkbox.addEventListener("change", (e) => {
+          if (e.target.checked) {
+            row.classList.remove("keep");
+            row.classList.add("delete");
+          } else {
+            row.classList.remove("delete");
+            row.classList.add("keep");
+          }
+        });
+
+        groupDiv.appendChild(row);
       });
 
-      groupDiv.appendChild(row);
+      container.appendChild(groupDiv);
     });
 
-    container.appendChild(groupDiv);
-  });
+    // Set the initial state of the Delete button
+    updateDeleteButton();
+  } finally {
+    // TODO - Force a Browser "Reflow" ??
+    // This is a trick: ask for offsetHeight so the browser acknowledges
+    // the element is there before trying to animate it again.
+    // Why?
+    // If you remove a class (opacity: 0) and immediately add it back (opacity: 1) in the same
+    // synchronous JavaScript block, the browser often "optimizes" the change away and just shows
+    // the final state without animating. By reading a property like offsetHeight, you force the
+    // browser to calculate the layout right now, ensuring it registers the "hidden" state before
+    // switching to the "visible" state.
+    void container.offsetHeight;
+
+    container.classList.add("visible");
+  }
 }
 
 async function processBatch() {
@@ -271,7 +317,8 @@ async function processBatch() {
 
       // Perform Delete
       for (let i = 0; i < idsToDelete.length; i++) {
-        await messenger.messages.delete([idsToDelete[i]]);
+        // await messenger.messages.delete([idsToDelete[i]]);
+        await wait(150); // Simulate delete delay
 
         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
         setUiState(
@@ -299,9 +346,21 @@ async function processBatch() {
   }
 }
 
-// function updateStatus(msg) {
-//   document.getElementById("status-bar").textContent = msg;
-// }
+function updateDeleteButton() {
+  const btnProcess = document.getElementById("btn-process");
+
+  const checkedCount = document.querySelectorAll(
+    ".dupe-checkbox:checked",
+  ).length;
+
+  if (checkedCount === 1) {
+    btnProcess.textContent = `Trash 1 email & Next`;
+  } else if (checkedCount > 1) {
+    btnProcess.textContent = `Trash ${checkedCount} emails & Next`;
+  } else {
+    btnProcess.textContent = "Keep all emails & Next";
+  }
+}
 
 function closeTab() {
   messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
