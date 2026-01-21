@@ -115,13 +115,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 function registerUIEventListeners() {
   const listContainer = document.getElementById("duplicate-list");
 
-  // When any checkbox is changed, update the Delete button state (Event Delegation)
-  // listContainer.addEventListener("change", (e) => {
-  //   if (e.target.matches(".dupe-checkbox")) {
-  //     updateDeleteButton();
-  //   }
-  // });
-
   // Buttons
   document.getElementById("btn-start").addEventListener("click", startScan);
   document
@@ -129,7 +122,7 @@ function registerUIEventListeners() {
     .addEventListener("click", processBatch);
   document.getElementById("btn-cancel").addEventListener("click", closeTab);
 
-  // Checkboxes
+  // Delete/Keep Checkboxes
   listContainer.addEventListener("change", (e) => {
     if (e.target.matches(".dupe-checkbox")) {
       handleCheckboxChange(e.target);
@@ -141,18 +134,16 @@ function handleCheckboxChange(checkbox) {
   // Find the parent row (closest goes up the DOM tree)
   const row = checkbox.closest(".message-row");
   // Find the text label inside that row
-  const labelSpan = row.querySelector(".action-text");
+  const labelSpan = row.querySelector(".badge");
 
   if (checkbox.checked) {
     // Delete
-    row.classList.remove("keep");
-    row.classList.add("delete");
+    row.classList.replace("keep", "delete");
     labelSpan.textContent = "Delete";
   } else {
     // Keep
-    row.classList.remove("delete");
-    row.classList.add("keep");
-    labelSpan.textContent = "Keep";
+    row.classList.replace("delete", "keep");
+    labelSpan.textContent = labelSpan.dataset.keepText;
   }
 
   updateDeleteButton();
@@ -270,6 +261,8 @@ async function renderBatch() {
 
       group.forEach((msg, i) => {
         const isKeeper = i === 0; // Keep the oldest
+        const defaultKeepText = isKeeper ? "Keep (Oldest)" : "Keep"; // And make sure the message remains consistent if checkbox is toggled
+
         const row = document.createElement("div");
         row.className = `message-row ${isKeeper ? "keep" : "delete"}`;
 
@@ -286,20 +279,8 @@ async function renderBatch() {
             msg.date,
           ).toLocaleString()} &bull; Folder: ${msg.folder.name}</div>
         </div>
-        <div class="badge">${isKeeper ? "Keep (Oldest)" : "Delete"}</div>
+        <div class="badge" data-keep-text="${defaultKeepText}">${isKeeper ? defaultKeepText : "Delete"}</div>
       `;
-
-        // // Allow user to toggle styling when clicking checkbox
-        // const checkbox = row.querySelector("input");
-        // checkbox.addEventListener("change", (e) => {
-        //   if (e.target.checked) {
-        //     row.classList.remove("keep");
-        //     row.classList.add("delete");
-        //   } else {
-        //     row.classList.remove("delete");
-        //     row.classList.add("keep");
-        //   }
-        // });
 
         groupDiv.appendChild(row);
       });
@@ -349,8 +330,9 @@ async function processBatch() {
 
       // Perform Delete
       for (let i = 0; i < idsToDelete.length; i++) {
-        // await messenger.messages.delete([idsToDelete[i]]);
-        await wait(150); // Simulate delete delay
+        // TODO Disable for testing
+        await messenger.messages.delete([idsToDelete[i]]);
+        // await wait(150); // TODO Simulate delete delay
 
         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
         setUIState(
