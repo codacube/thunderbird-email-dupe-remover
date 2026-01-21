@@ -15,7 +15,7 @@ let currentState = 0;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function setUiState(newState, customMessage = null) {
+function setUIState(newState, customMessage = null) {
   const statusBar = document.getElementById("status-bar");
 
   statusBar.classList.remove("status-error");
@@ -101,35 +101,67 @@ document.addEventListener("DOMContentLoaded", async () => {
   targetFolderId = decodeURIComponent(window.location.hash.substring(1));
 
   if (!targetFolderId) {
-    setUiState(AppState.ERROR, "Error: No folder selected.");
+    setUIState(AppState.ERROR, "Error: No folder selected.");
     return;
   }
 
-  // Register all event listeners
-  document.getElementById("duplicate-list").addEventListener("change", (e) => {
-    if (e.target.matches(".dupe-checkbox")) {
-      updateDeleteButton();
-    }
-  });
-
-  document.getElementById("btn-start").addEventListener("click", startScan);
-
-  document
-    .getElementById("btn-process")
-    .addEventListener("click", processBatch);
-  document.getElementById("btn-cancel").addEventListener("click", () => {
-    closeTab();
-  });
+  registerUIEventListeners();
 
   // Ready to start
   const folder = await messenger.folders.get(targetFolderId);
-  setUiState(AppState.WAITING_TO_START, `Ready to scan folder: ${folder.name}`);
+  setUIState(AppState.WAITING_TO_START, `Ready to scan folder: ${folder.name}`);
 });
+
+function registerUIEventListeners() {
+  const listContainer = document.getElementById("duplicate-list");
+
+  // When any checkbox is changed, update the Delete button state (Event Delegation)
+  // listContainer.addEventListener("change", (e) => {
+  //   if (e.target.matches(".dupe-checkbox")) {
+  //     updateDeleteButton();
+  //   }
+  // });
+
+  // Buttons
+  document.getElementById("btn-start").addEventListener("click", startScan);
+  document
+    .getElementById("btn-process")
+    .addEventListener("click", processBatch);
+  document.getElementById("btn-cancel").addEventListener("click", closeTab);
+
+  // Checkboxes
+  listContainer.addEventListener("change", (e) => {
+    if (e.target.matches(".dupe-checkbox")) {
+      handleCheckboxChange(e.target);
+    }
+  });
+}
+
+function handleCheckboxChange(checkbox) {
+  // Find the parent row (closest goes up the DOM tree)
+  const row = checkbox.closest(".message-row");
+  // Find the text label inside that row
+  const labelSpan = row.querySelector(".action-text");
+
+  if (checkbox.checked) {
+    // Delete
+    row.classList.remove("keep");
+    row.classList.add("delete");
+    labelSpan.textContent = "Delete";
+  } else {
+    // Keep
+    row.classList.remove("delete");
+    row.classList.add("keep");
+    labelSpan.textContent = "Keep";
+  }
+
+  updateDeleteButton();
+}
 
 async function startScan() {
   const isRecursive = document.getElementById("include-subfolders").checked;
 
-  setUiState(AppState.SCANNING, "Scanning folder... this may take a moment.");
+  setUIState(AppState.SCANNING, "Scanning folder... this may take a moment.");
 
   // Wait for the controls-bar to disappear (transition set to 0.5s in CSS)
   await wait(750);
@@ -140,7 +172,7 @@ async function startScan() {
     const messages = await fetchAllMessages(rootFolder, isRecursive);
     allDuplicateGroups = detectDuplicates(messages);
 
-    setUiState(
+    setUIState(
       AppState.IDLE,
       `Found ${allDuplicateGroups.length} groups of duplicates.`,
     );
@@ -148,14 +180,14 @@ async function startScan() {
     currentBatchIndex = 0;
     renderBatch();
   } catch (err) {
-    setUiState(AppState.ERROR, "Error during scan: " + err.message);
+    setUIState(AppState.ERROR, "Error during scan: " + err.message);
   }
 }
 
 async function fetchAllMessages(folder, recursive) {
   let messages = [];
 
-  setUiState(AppState.SCANNING, `Scanning: ${folder.name}...`);
+  setUIState(AppState.SCANNING, `Scanning: ${folder.name}...`);
   let page = await messenger.messages.list(folder);
   messages.push(...page.messages);
   while (page.id) {
@@ -219,7 +251,7 @@ async function renderBatch() {
     if (batch.length === 0) {
       container.innerHTML =
         "<div style='text-align:center; padding:40px;'><h3>All Done!</h3><p>No more duplicates found.</p></div>";
-      setUiState(AppState.FINISHED, "All done! No more duplicates.");
+      setUIState(AppState.FINISHED, "All done! No more duplicates.");
       return;
     }
 
@@ -257,17 +289,17 @@ async function renderBatch() {
         <div class="badge">${isKeeper ? "Keep (Oldest)" : "Delete"}</div>
       `;
 
-        // Allow user to toggle styling when clicking checkbox
-        const checkbox = row.querySelector("input");
-        checkbox.addEventListener("change", (e) => {
-          if (e.target.checked) {
-            row.classList.remove("keep");
-            row.classList.add("delete");
-          } else {
-            row.classList.remove("delete");
-            row.classList.add("keep");
-          }
-        });
+        // // Allow user to toggle styling when clicking checkbox
+        // const checkbox = row.querySelector("input");
+        // checkbox.addEventListener("change", (e) => {
+        //   if (e.target.checked) {
+        //     row.classList.remove("keep");
+        //     row.classList.add("delete");
+        //   } else {
+        //     row.classList.remove("delete");
+        //     row.classList.add("keep");
+        //   }
+        // });
 
         groupDiv.appendChild(row);
       });
@@ -300,7 +332,7 @@ async function processBatch() {
     return;
   }
 
-  setUiState(AppState.DELETING, "Deleting selected messages...");
+  setUIState(AppState.DELETING, "Deleting selected messages...");
 
   try {
     const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
@@ -310,7 +342,7 @@ async function processBatch() {
     );
 
     if (idsToDelete.length > 0) {
-      setUiState(
+      setUIState(
         AppState.DELETING,
         `Deleting ${idsToDelete.length} messages...`,
       );
@@ -321,7 +353,7 @@ async function processBatch() {
         await wait(150); // Simulate delete delay
 
         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
-        setUiState(
+        setUIState(
           AppState.DELETING,
           `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
         );
@@ -332,16 +364,16 @@ async function processBatch() {
     currentBatchIndex += BATCH_SIZE;
 
     if (currentBatchIndex >= allDuplicateGroups.length) {
-      setUiState(AppState.FINISHED, "Completed, no more duplicates.");
+      setUIState(AppState.FINISHED, "Completed, no more duplicates.");
     } else {
-      setUiState(AppState.IDLE, "Batch processed. Ready for next.");
+      setUIState(AppState.IDLE, "Batch processed. Ready for next.");
       // Scroll to top
       document.getElementById("duplicate-list").scrollTop = 0;
     }
 
     renderBatch();
   } catch (err) {
-    setUiState(AppState.ERROR, "Error:" + err.message);
+    setUIState(AppState.ERROR, "Error:" + err.message);
     alert("Failed to delete messages.");
   }
 }
