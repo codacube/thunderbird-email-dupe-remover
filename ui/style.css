@@ -151,6 +151,19 @@ h1 {
   color: #666;
 }
 
+.folder-badge {
+  display: inline-block;
+  background-color: #e0e0e0;
+  color: #333;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  margin-right: 0.8rem;
+  font-weight: 800;
+  border: 1px solid #ccc;
+  vertical-align: middle;
+}
+
 footer {
   padding: 1.5rem 2rem;
   background: #f9f9fa;

@@ -265,47 +265,53 @@ async function renderBatch() {
       return;
     }
 
-    batch.forEach((group, index) => {
-      // Sort group by date (Oldest first)
-      group.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const batchesHTML = batch
+      .map((group, index) => {
+        // Sort group by date (Oldest first) - the first one is the "Keeper", the rest are "Trash"
+        group.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      // The first one is the "Keeper", the rest are "Trash"
-      // We create a visual group for them
-      const groupDiv = document.createElement("div");
-      groupDiv.className = "dupe-group";
+        // Check for unique folder names in this batch
+        const uniqueFolderNames = new Set(group.map((msg) => msg.folder.name));
+        const showFolderBadge = uniqueFolderNames.size > 1;
 
-      // Header
-      const subject = group[0].subject || "(No Subject)";
-      groupDiv.innerHTML = `<div class="group-header"><span>${subject}</span> <span style="font-weight:normal; font-size:0.9em">${group.length} Copies</span></div>`;
+        const rowsHTML = group
+          .map((msg, i) => {
+            const isKeeper = i === 0; // Keep the oldest
+            const defaultKeepText = isKeeper ? "Keep (Oldest)" : "Keep"; // And make sure the message remains consistent if checkbox is toggled
 
-      group.forEach((msg, i) => {
-        const isKeeper = i === 0; // Keep the oldest
-        const defaultKeepText = isKeeper ? "Keep (Oldest)" : "Keep"; // And make sure the message remains consistent if checkbox is toggled
+            // Checkbox Logic: Keepers unchecked, Deletions checked
+            const checked = isKeeper ? "" : "checked";
 
-        const row = document.createElement("div");
-        row.className = `message-row ${isKeeper ? "keep" : "delete"}`;
+            // Display folder badge if multiple folders are involved (or just folder name if all the same)
+            const folderBadgeHtml = showFolderBadge
+              ? `<span class="folder-badge" title="${msg.folder.path || msg.folder.name}">📂 ${msg.folder.name}</span>`
+              : `📂 ${msg.folder.name}`;
 
-        // Checkbox Logic: Keepers unchecked, Deletions checked
-        const checked = isKeeper ? "" : "checked";
+            return `
+              <div class="message-row ${isKeeper ? "keep" : "delete"}">
+                <input type="checkbox" class="dupe-checkbox" data-msg-id="${msg.id}" ${checked} />
+                <div class="details">
+                  <div><strong>${msg.author}</strong></div>
+                    <div class="meta">${new Date(msg.date).toLocaleString()} &bull; ${folderBadgeHtml}</div>
+                  </div>
+                <div class="badge" data-keep-text="${defaultKeepText}">${isKeeper ? defaultKeepText : "Delete"}</div>
+              </div>
+            `;
+          })
+          .join("");
 
-        row.innerHTML = `
-        <input type="checkbox" class="dupe-checkbox" data-msg-id="${
-          msg.id
-        }" ${checked}>
-        <div class="details">
-          <div><strong>${msg.author}</strong></div>
-          <div class="meta">${new Date(
-            msg.date,
-          ).toLocaleString()} &bull; Folder: ${msg.folder.name}</div>
-        </div>
-        <div class="badge" data-keep-text="${defaultKeepText}">${isKeeper ? defaultKeepText : "Delete"}</div>
-      `;
+        // Subject header for the group
+        const subject = group[0].subject || "(No Subject)";
 
-        groupDiv.appendChild(row);
-      });
+        return `
+          <div class="group-header"><span>${subject}</span> <span style="font-weight:normal; font-size:0.9em">${group.length} Copies</span></div>
+            ${rowsHTML} 
+          </div>
+          `;
+      })
+      .join("");
 
-      container.appendChild(groupDiv);
-    });
+    container.innerHTML = batchesHTML;
 
     // Set the initial state of the Delete button
     updateDeleteButton();
