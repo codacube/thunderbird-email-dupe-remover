@@ -2,6 +2,7 @@ let targetFolderId = null;
 let allDuplicateGroups = []; // Array of arrays of messages
 let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
+let numDuplicatesDeleted = 0;
 const AppState = {
   WAITING_TO_START: "WAITING_TO_START",
   IDLE: "IDLE",
@@ -163,10 +164,17 @@ async function startScan() {
     const messages = await fetchAllMessages(rootFolder, isRecursive);
     allDuplicateGroups = detectDuplicates(messages);
 
-    setUIState(
-      AppState.IDLE,
-      `Found ${allDuplicateGroups.length} groups of duplicates.`,
-    );
+    if (allDuplicateGroups.length === 0) {
+      setUIState(
+        AppState.FINISHED,
+        "No duplicate emails found in this folder.",
+      );
+    } else {
+      setUIState(
+        AppState.IDLE,
+        `Found ${allDuplicateGroups.length} groups of duplicates.`,
+      );
+    }
 
     currentBatchIndex = 0;
     renderBatch();
@@ -228,6 +236,13 @@ async function renderBatch() {
 
     container.innerHTML = ""; // Clear current view
 
+    // If no duplicates found
+    if (!allDuplicateGroups || allDuplicateGroups.length === 0) {
+      container.innerHTML =
+        "<div style='text-align:center; padding:40px;'><h3>No Duplicates Found</h3><p>There are no duplicate emails in this folder.</p></div>";
+      return;
+    }
+
     // Calculate slice
     const start = currentBatchIndex;
     const end = Math.min(start + BATCH_SIZE, allDuplicateGroups.length);
@@ -239,10 +254,10 @@ async function renderBatch() {
     document.getElementById("total-groups").textContent =
       allDuplicateGroups.length;
 
+    // If we've processed all batches, then nothing more to do
     if (batch.length === 0) {
       container.innerHTML =
         "<div style='text-align:center; padding:40px;'><h3>All Done!</h3><p>No more duplicates found.</p></div>";
-      setUIState(AppState.FINISHED, "All done! No more duplicates.");
       return;
     }
 
@@ -331,8 +346,8 @@ async function processBatch() {
       // Perform Delete
       for (let i = 0; i < idsToDelete.length; i++) {
         // TODO Disable for testing
-        await messenger.messages.delete([idsToDelete[i]]);
-        // await wait(150); // TODO Simulate delete delay
+        // await messenger.messages.delete([idsToDelete[i]]);
+        await wait(150); // TODO Simulate delete delay
 
         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
         setUIState(
