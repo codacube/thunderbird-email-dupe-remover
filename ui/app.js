@@ -254,6 +254,10 @@ async function renderBatch() {
     document.getElementById("total-groups").textContent =
       allDuplicateGroups.length;
 
+    console.log(
+      `start: ${start} end: ${end} total: ${allDuplicateGroups.length}`,
+    );
+
     // If we've processed all batches, then nothing more to do
     if (batch.length === 0) {
       container.innerHTML =
@@ -382,12 +386,22 @@ function updateDeleteButton() {
     ".dupe-checkbox:checked",
   ).length;
 
+  const isLastBatch =
+    currentBatchIndex + BATCH_SIZE >= allDuplicateGroups.length - 1;
+  const actionSuffix = isLastBatch ? "Finish" : "Next";
+  console.log(
+    `Updating delete button: ${checkedCount} checked, last batch: ${isLastBatch}`,
+  );
+  console.log(
+    `currentBatchIndex: ${currentBatchIndex}, total groups: ${allDuplicateGroups.length}`,
+  );
+
   if (checkedCount === 1) {
-    btnProcess.textContent = `Trash 1 email & Next`;
+    btnProcess.textContent = `Trash 1 email & ${actionSuffix}`;
   } else if (checkedCount > 1) {
-    btnProcess.textContent = `Trash ${checkedCount} emails & Next`;
+    btnProcess.textContent = `Trash ${checkedCount} emails & ${actionSuffix}`;
   } else {
-    btnProcess.textContent = "Keep all emails & Next";
+    btnProcess.textContent = `Keep all emails & ${actionSuffix}`;
   }
 }
 
