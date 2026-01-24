@@ -193,6 +193,7 @@ async function handleProcessClick() {
         false,
         progressCallback,
       );
+      // TODO This needs to be called at the end when all batches are done - need to keep track of number of deletions across batches
       const shouldPrompt = await updateStatsAndCheckDonation(numDeleted);
       console.log(
         `Deleted ${numDeleted} messages in batch. shouldPrompt: ${shouldPrompt}`,
@@ -496,17 +497,13 @@ async function deleteMessages(
 
   // For debugging
   debugMode = true;
-  const deleteFunc = (ids, bypassTrash = false) =>
-    debugMode
-      ? async (ids) => await wait(150) // Simulate delay
-      : messenger.messages.delete(ids, bypassTrash);
-
-  const progressCallback = (current, total) => {
-    const percent = Math.round((current / total) * 100);
-    setUIState(
-      AppState.DELETING,
-      `Deleting messages... ${percent}% (${current} of ${total}).`,
-    );
+  const deleteFunc = async (ids, bypassTrash = false) => {
+    if (debugMode) {
+      await wait(150); // Simulate delay
+      console.log(`[Debug] .... Deleting messages: ${ids.join(", ")}`);
+    } else {
+      await messenger.messages.delete(ids, bypassTrash);
+    }
   };
 
   const CHUNK_SIZE = 5; // Number of messages to delete per chunk (100 is better, but we'll go low for now)
