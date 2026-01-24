@@ -2,7 +2,7 @@ let targetFolderId = null;
 let allDuplicateGroups = []; // Array of arrays of messages
 let currentBatchIndex = 0;
 const BATCH_SIZE = 20;
-let numDuplicatesDeleted = 0;
+
 const AppState = {
   WAITING_TO_START: "WAITING_TO_START",
   IDLE: "IDLE",
@@ -92,7 +92,7 @@ function setUIState(newState, customMessage = null) {
       btnCancel.disabled = false;
       btnProcess.textContent = "Retry Deletion";
       statusBar.classList.add("status-error");
-      console.error("Error State:", customMessage);
+      console.error("Error State: ", customMessage);
       break;
   }
 }
@@ -120,7 +120,7 @@ function registerUIEventListeners() {
   document.getElementById("btn-start").addEventListener("click", startScan);
   document
     .getElementById("btn-process")
-    .addEventListener("click", processBatch);
+    .addEventListener("click", handleProcessClick);
   document.getElementById("btn-cancel").addEventListener("click", closeTab);
 
   // Delete/Keep Checkboxes
@@ -148,6 +148,74 @@ function handleCheckboxChange(checkbox) {
   }
 
   updateDeleteButton();
+}
+
+async function handleProcessClick() {
+  // TODO Num of TOTAL
+  const progressCallback = (current, total) => {
+    const percent = Math.round((current / total) * 100);
+    setUIState(
+      AppState.DELETING,
+      `Deleting messages... ${percent}% (${current} of ${total}).`,
+    );
+  };
+
+  // processBatch().then(async (numDeleted) => {
+  //   const shouldPrompt = await updateStatsAndCheckDonation(numDeleted);
+  // })
+
+  // let numDeletedThisBatch = 0;
+
+  // Check if already finished and we need to exit
+  if (currentState === AppState.FINISHED) {
+    closeTab();
+    return;
+  }
+
+  // Start deleting messages in this batch
+  try {
+    // Start Deleting this batch
+    setUIState(AppState.DELETING, "Deleting messages...");
+
+    const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
+    const idsToDelete = Array.from(checkboxes).map((cb) =>
+      parseInt(cb.getAttribute("data-msg-id")),
+    );
+
+    if (idsToDelete.length > 0) {
+      setUIState(
+        AppState.DELETING,
+        `Deleting ${idsToDelete.length} messages...`,
+      );
+
+      const numDeleted = await deleteMessages(
+        idsToDelete,
+        false,
+        progressCallback,
+      );
+      const shouldPrompt = await updateStatsAndCheckDonation(numDeleted);
+      console.log(
+        `Deleted ${numDeleted} messages in batch. shouldPrompt: ${shouldPrompt}`,
+      );
+    }
+
+    // TODO advanceWorkflow/State / nextBatch
+    // Move to next batch, calculate state, then render
+    currentBatchIndex += BATCH_SIZE;
+
+    if (currentBatchIndex >= allDuplicateGroups.length) {
+      setUIState(AppState.FINISHED, "Completed, no more duplicates.");
+    } else {
+      setUIState(AppState.IDLE, "Batch processed. Ready for next.");
+      // Scroll to top
+      document.getElementById("duplicate-list").scrollTop = 0;
+    }
+
+    renderBatch();
+  } catch (err) {
+    setUIState(AppState.ERROR, "Error: " + err.message);
+    // alert("Failed to delete messages.");
+  }
 }
 
 async function startScan() {
@@ -331,23 +399,66 @@ async function renderBatch() {
   }
 }
 
-async function processBatch() {
-  // Check if already finished and we need to exit
-  if (currentState === AppState.FINISHED) {
-    closeTab();
-    return;
-  }
+// async function processBatch() {
+//   let numDeletedThisBatch = 0;
 
-  setUIState(AppState.DELETING, "Deleting selected messages...");
+//   // Check if already finished and we need to exit
+//   if (currentState === AppState.FINISHED) {
+//     closeTab();
+//     return;
+//   }
 
-  try {
-    const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
+//   setUIState(AppState.DELETING, "Deleting selected messages...");
 
-    const idsToDelete = Array.from(checkboxes).map((cb) =>
-      parseInt(cb.getAttribute("data-msg-id")),
-    );
+//   try {
+//     const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
 
-    if (idsToDelete.length > 0) {
+//     const idsToDelete = Array.from(checkboxes).map((cb) =>
+//       parseInt(cb.getAttribute("data-msg-id")),
+//     );
+
+//     if (idsToDelete.length > 0) {
+//       setUIState(
+//         AppState.DELETING,
+//         `Deleting ${idsToDelete.length} messages...`,
+//       );
+
+//       // Perform Delete
+//       for (let i = 0; i < idsToDelete.length; i++) {
+//         // TODO Disable for testing
+//         // await messenger.messages.delete([idsToDelete[i]]);
+//         await wait(150); // TODO Simulate delete delay
+
+//         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
+//         setUIState(
+//           AppState.DELETING,
+//           `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
+//         );
+//       }
+//       numDeletedThisBatch = idsToDelete.length;
+//     }
+
+//     // Move to next batch, calculate state, then render
+//     currentBatchIndex += BATCH_SIZE;
+
+//     if (currentBatchIndex >= allDuplicateGroups.length) {
+//       setUIState(AppState.FINISHED, "Completed, no more duplicates.");
+//     } else {
+//       setUIState(AppState.IDLE, "Batch processed. Ready for next.");
+//       // Scroll to top
+//       document.getElementById("duplicate-list").scrollTop = 0;
+//     }
+
+//     renderBatch();
+//   } catch (err) {
+//     setUIState(AppState.ERROR, "Error:" + err.message);
+//     // alert("Failed to delete messages.");
+//   }
+
+//   return numDeletedThisBatch;
+// }
+/*
+if (idsToDelete.length > 0) {
       setUIState(
         AppState.DELETING,
         `Deleting ${idsToDelete.length} messages...`,
@@ -365,24 +476,64 @@ async function processBatch() {
           `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
         );
       }
+      numDeletedThisBatch = idsToDelete.length;
     }
+*/
 
-    // Move to next batch, calculate state, then render
-    currentBatchIndex += BATCH_SIZE;
+/**
+ * Deletes messages in efficient chunks to prevent UI freezing
+ * while allowing for progress updates.
+ * * @param {Array<number>} messageIds - List of IDs to delete
+ * @param {boolean} bypassTrash - Permanent delete vs Trash (not implemented)
+ * @param {Function} onProgress - Optional callback (percent => void)
+ */
+async function deleteMessages(
+  messageIds,
+  bypassTrash = false,
+  onProgress = null,
+) {
+  if (!messageIds || messageIds.length === 0) return 0;
 
-    if (currentBatchIndex >= allDuplicateGroups.length) {
-      setUIState(AppState.FINISHED, "Completed, no more duplicates.");
-    } else {
-      setUIState(AppState.IDLE, "Batch processed. Ready for next.");
-      // Scroll to top
-      document.getElementById("duplicate-list").scrollTop = 0;
-    }
+  // For debugging
+  debugMode = true;
+  const deleteFunc = (ids, bypassTrash = false) =>
+    debugMode
+      ? async (ids) => await wait(150) // Simulate delay
+      : messenger.messages.delete(ids, bypassTrash);
 
-    renderBatch();
-  } catch (err) {
-    setUIState(AppState.ERROR, "Error:" + err.message);
-    alert("Failed to delete messages.");
+  const progressCallback = (current, total) => {
+    const percent = Math.round((current / total) * 100);
+    setUIState(
+      AppState.DELETING,
+      `Deleting messages... ${percent}% (${current} of ${total}).`,
+    );
+  };
+
+  const CHUNK_SIZE = 5; // Number of messages to delete per chunk (100 is better, but we'll go low for now)
+  const total = messageIds.length;
+
+  if (total <= CHUNK_SIZE) {
+    await deleteFunc(messageIds); //messenger.messages.delete(messageIds);
+    if (onProgress) onProgress(total, total);
+    return total;
   }
+
+  let processed = 0;
+
+  for (let i = 0; i < total; i += CHUNK_SIZE) {
+    const chunk = messageIds.slice(i, i + CHUNK_SIZE);
+    await deleteFunc(chunk, bypassTrash);
+    processed += chunk.length;
+
+    if (onProgress) {
+      //const percent = Math.round((processed / total) * 100);
+      onProgress(processed, total);
+    }
+
+    await wait(10); // Small delay to keep UI responsive
+  }
+
+  return processed;
 }
 
 function updateDeleteButton() {
@@ -413,4 +564,42 @@ function updateDeleteButton() {
 
 function closeTab() {
   messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
+}
+
+async function updateStatsAndCheckDonation(countDeletedNow) {
+  const store = await browser.storage.local.get([
+    "totalDeleted",
+    "lastDonationPrompt",
+  ]);
+
+  let total = (store.totalDeleted || 0) + countDeletedNow;
+  let lastPrompt = store.lastDonationPrompt || 0;
+  let showMessage = false;
+  const now = Date.now();
+  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+  // More than 50 deleted now? Show message
+  if (countDeletedNow > 50) {
+    showMessage = true;
+  }
+
+  // Crossed a 1000 threshold recently? Show message
+  if (Math.floor(total / 100) > Math.floor((total - countDeletedNow) / 100)) {
+    showMessage = true;
+  }
+
+  // Don't ask again if we asked recently
+  if (now - lastPrompt < ONE_WEEK) {
+    showMessage = false;
+  }
+
+  // Save updated stats
+  await browser.storage.local.set({ totalDeleted: total });
+
+  if (showMessage) {
+    await browser.storage.local.set({ lastDonationPrompt: now });
+    return true; // Prompt for donation
+  }
+
+  return false;
 }
