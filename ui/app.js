@@ -1,6 +1,7 @@
 let targetFolderId = null;
 let allDuplicateGroups = []; // Array of arrays of messages
 let currentBatchIndex = 0;
+let sessionDeletedCount = 0;
 const BATCH_SIZE = 20;
 
 const AppState = {
@@ -8,6 +9,7 @@ const AppState = {
   IDLE: "IDLE",
   SCANNING: "SCANNING",
   DELETING: "DELETING",
+  DONATION_PROMPT: "DONATION_PROMPT",
   FINISHED: "FINISHED",
   ERROR: "ERROR",
 };
@@ -76,9 +78,18 @@ function setUIState(newState, customMessage = null) {
       btnProcess.textContent = "Deleting...";
       break;
 
+    case AppState.DONATION_PROMPT:
+      // controls.classList.add("hidden"); // TODO Hidden?
+      // body.style.cursor = "default";
+      // btnProcess.disabled = false;
+      // btnCancel.disabled = false;
+      // btnProcess.textContent = "Finished";
+      renderDonationScreen();
+      break;
+
     // All done
     case AppState.FINISHED:
-      controls.classList.add("hidden");
+      controls.classList.add("hidden"); // TODO Hidden?
       body.style.cursor = "default";
       btnProcess.disabled = false;
       btnCancel.disabled = false;
@@ -151,21 +162,6 @@ function handleCheckboxChange(checkbox) {
 }
 
 async function handleProcessClick() {
-  // TODO Num of TOTAL
-  const progressCallback = (current, total) => {
-    const percent = Math.round((current / total) * 100);
-    setUIState(
-      AppState.DELETING,
-      `Deleting messages... ${percent}% (${current} of ${total}).`,
-    );
-  };
-
-  // processBatch().then(async (numDeleted) => {
-  //   const shouldPrompt = await updateStatsAndCheckDonation(numDeleted);
-  // })
-
-  // let numDeletedThisBatch = 0;
-
   // Check if already finished and we need to exit
   if (currentState === AppState.FINISHED) {
     closeTab();
@@ -177,41 +173,31 @@ async function handleProcessClick() {
     // Start Deleting this batch
     setUIState(AppState.DELETING, "Deleting messages...");
 
-    const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
-    const idsToDelete = Array.from(checkboxes).map((cb) =>
-      parseInt(cb.getAttribute("data-msg-id")),
-    );
-
-    if (idsToDelete.length > 0) {
+    const progressCallback = (current, total) => {
+      const percent = Math.round((current / total) * 100);
       setUIState(
         AppState.DELETING,
-        `Deleting ${idsToDelete.length} messages...`,
+        `Deleting messages... ${percent}% (${current} of ${total}).`,
       );
+    };
 
-      const numDeleted = await deleteMessages(
-        idsToDelete,
-        false,
-        progressCallback,
-      );
-      // TODO This needs to be called at the end when all batches are done - need to keep track of number of deletions across batches
-      const shouldPrompt = await updateStatsAndCheckDonation(numDeleted);
-      console.log(
-        `Deleted ${numDeleted} messages in batch. shouldPrompt: ${shouldPrompt}`,
-      );
-    }
+    // TODO Best place?
+    // const donationPrompt = await updateStatsAndCheckDonation(totalDeletedThisSession);
+    // console.log(
+    //   `Deleted ${totalDeletedThisSession} total messages this session. shouldPrompt: ${donationPrompt}`,
+    // );
+    const numDeleted = await processBatch(progressCallback);
+    sessionDeletedCount += numDeleted;
+    await updateStats(numDeleted);
 
-    // TODO advanceWorkflow/State / nextBatch
-    // Move to next batch, calculate state, then render
-    currentBatchIndex += BATCH_SIZE;
+    // const showDonationMsg = await updateStatsAndCheckDonation(
+    //   totalDeletedThisSession,
+    // );
+    // console.log(
+    //   `Deleted ${totalDeletedThisSession} total messages this session. shouldPrompt: ${donationPrompt}`,
+    // );
 
-    if (currentBatchIndex >= allDuplicateGroups.length) {
-      setUIState(AppState.FINISHED, "Completed, no more duplicates.");
-    } else {
-      setUIState(AppState.IDLE, "Batch processed. Ready for next.");
-      // Scroll to top
-      document.getElementById("duplicate-list").scrollTop = 0;
-    }
-
+    await advanceState();
     renderBatch();
   } catch (err) {
     setUIState(AppState.ERROR, "Error: " + err.message);
@@ -219,8 +205,29 @@ async function handleProcessClick() {
   }
 }
 
+async function advanceState() {
+  // Move to next batch
+  currentBatchIndex += BATCH_SIZE;
+
+  // Set state
+  if (currentBatchIndex >= allDuplicateGroups.length) {
+    const showDonation = await checkIfShowDonationMsg(sessionDeletedCount);
+    if (showDonation) {
+      setUIState(AppState.DONATION_PROMPT, "Preparing donation prompt...");
+    } else {
+      setUIState(AppState.FINISHED, "Completed, no more duplicates.");
+    }
+  } else {
+    setUIState(AppState.IDLE, "Batch processed. Ready for next.");
+    // Scroll to top
+    document.getElementById("duplicate-list").scrollTop = 0;
+  }
+}
+
 async function startScan() {
   const isRecursive = document.getElementById("include-subfolders").checked;
+
+  sessionDeletedCount = 0;
 
   setUIState(AppState.SCANNING, "Scanning folder... this may take a moment.");
 
@@ -296,6 +303,7 @@ function detectDuplicates(messages) {
   return Array.from(map.values()).filter((group) => group.length > 1);
 }
 
+// TODO Show donation in here?
 async function renderBatch() {
   const container = document.getElementById("duplicate-list");
 
@@ -400,86 +408,23 @@ async function renderBatch() {
   }
 }
 
-// async function processBatch() {
-//   let numDeletedThisBatch = 0;
+async function processBatch(onProgress = null) {
+  const idsToDelete = getIdsToDeleteInCurrentBatch();
+  if (idsToDelete.length === 0) return 0;
 
-//   // Check if already finished and we need to exit
-//   if (currentState === AppState.FINISHED) {
-//     closeTab();
-//     return;
-//   }
+  // We have ids to delete
+  setUIState(AppState.DELETING, `Deleting ${idsToDelete.length} messages...`);
+  const numDeleted = await deleteMessages(idsToDelete, false, onProgress);
+  return numDeleted;
+}
 
-//   setUIState(AppState.DELETING, "Deleting selected messages...");
-
-//   try {
-//     const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
-
-//     const idsToDelete = Array.from(checkboxes).map((cb) =>
-//       parseInt(cb.getAttribute("data-msg-id")),
-//     );
-
-//     if (idsToDelete.length > 0) {
-//       setUIState(
-//         AppState.DELETING,
-//         `Deleting ${idsToDelete.length} messages...`,
-//       );
-
-//       // Perform Delete
-//       for (let i = 0; i < idsToDelete.length; i++) {
-//         // TODO Disable for testing
-//         // await messenger.messages.delete([idsToDelete[i]]);
-//         await wait(150); // TODO Simulate delete delay
-
-//         let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
-//         setUIState(
-//           AppState.DELETING,
-//           `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
-//         );
-//       }
-//       numDeletedThisBatch = idsToDelete.length;
-//     }
-
-//     // Move to next batch, calculate state, then render
-//     currentBatchIndex += BATCH_SIZE;
-
-//     if (currentBatchIndex >= allDuplicateGroups.length) {
-//       setUIState(AppState.FINISHED, "Completed, no more duplicates.");
-//     } else {
-//       setUIState(AppState.IDLE, "Batch processed. Ready for next.");
-//       // Scroll to top
-//       document.getElementById("duplicate-list").scrollTop = 0;
-//     }
-
-//     renderBatch();
-//   } catch (err) {
-//     setUIState(AppState.ERROR, "Error:" + err.message);
-//     // alert("Failed to delete messages.");
-//   }
-
-//   return numDeletedThisBatch;
-// }
-/*
-if (idsToDelete.length > 0) {
-      setUIState(
-        AppState.DELETING,
-        `Deleting ${idsToDelete.length} messages...`,
-      );
-
-      // Perform Delete
-      for (let i = 0; i < idsToDelete.length; i++) {
-        // TODO Disable for testing
-        // await messenger.messages.delete([idsToDelete[i]]);
-        await wait(150); // TODO Simulate delete delay
-
-        let pct = Math.round(((i + 1) / idsToDelete.length) * 100);
-        setUIState(
-          AppState.DELETING,
-          `Deleting messages... ${pct}% (${i + 1} of ${idsToDelete.length})`,
-        );
-      }
-      numDeletedThisBatch = idsToDelete.length;
-    }
-*/
+function getIdsToDeleteInCurrentBatch() {
+  const checkboxes = document.querySelectorAll(".dupe-checkbox:checked");
+  const idsToDelete = Array.from(checkboxes).map((cb) =>
+    parseInt(cb.getAttribute("data-msg-id")),
+  );
+  return idsToDelete;
+}
 
 /**
  * Deletes messages in efficient chunks to prevent UI freezing
@@ -562,36 +507,44 @@ function updateDeleteButton() {
 function closeTab() {
   messenger.tabs.getCurrent().then((tab) => messenger.tabs.remove(tab.id));
 }
+async function updateStats(numDeleted) {
+  const store = await browser.storage.local.get(["totalDeleted"]);
+  let total = (store.totalDeleted || 0) + numDeleted;
 
-async function updateStatsAndCheckDonation(countDeletedNow) {
+  await browser.storage.local.set({ totalDeleted: total });
+  return total;
+}
+
+async function checkIfShowDonationMsg(deletedThisSession) {
   const store = await browser.storage.local.get([
     "totalDeleted",
     "lastDonationPrompt",
   ]);
 
-  let total = (store.totalDeleted || 0) + countDeletedNow;
+  let totalDeleted = store.totalDeleted || 0;
   let lastPrompt = store.lastDonationPrompt || 0;
   let showMessage = false;
+
   const now = Date.now();
   const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
 
   // More than 50 deleted now? Show message
-  if (countDeletedNow > 50) {
+  if (deletedThisSession > 50) {
     showMessage = true;
   }
 
   // Crossed a 1000 threshold recently? Show message
-  if (Math.floor(total / 100) > Math.floor((total - countDeletedNow) / 100)) {
+  if (
+    Math.floor(totalDeleted / 100) >
+    Math.floor((totalDeleted - deletedThisSession) / 100)
+  ) {
     showMessage = true;
   }
 
   // Don't ask again if we asked recently
-  if (now - lastPrompt < ONE_WEEK) {
-    showMessage = false;
-  }
-
-  // Save updated stats
-  await browser.storage.local.set({ totalDeleted: total });
+  // if (now - lastPrompt < ONE_WEEK) {
+  //   showMessage = false;
+  // }
 
   if (showMessage) {
     await browser.storage.local.set({ lastDonationPrompt: now });
@@ -599,4 +552,41 @@ async function updateStatsAndCheckDonation(countDeletedNow) {
   }
 
   return false;
+}
+
+// Quick and dirty donation screen for testing
+// Get rid of magic numbers!
+function renderDonationScreen() {
+  const container = document.getElementById("duplicate-list");
+  const statusBar = document.getElementById("status-bar");
+
+  // 1. Update Status Bar
+  statusBar.textContent = "Cleanup complete! You're a superstar.";
+  statusBar.className = "status-success"; // Green text
+
+  // 2. Render the 'Ask' inside the main container (or a modal)
+  container.innerHTML = `
+    <div class="donation-wrapper">
+      <div class="donation-icon">🎉</div>
+      <h3>Wow! You've cleaned up 1,000+ emails!</h3>
+      <p>I build this free tool in my spare time. If I just saved you an hour of work, consider buying me a coffee.</p>
+      
+      <a href="https://ko-fi.com/yourname" target="_blank" class="btn primary btn-donate">
+        ☕ Buy me a Coffee
+      </a>
+      
+      <button id="btn-return" class="btn secondary">No thanks, maybe later</button>
+    </div>
+  `;
+
+  container.classList.add("visible");
+
+  // 3. Bind the local "No thanks" button immediately
+  document.getElementById("btn-return").addEventListener(
+    "click",
+    () => {
+      setUiState(AppState.FINISHED, "Finished.");
+    },
+    { once: true },
+  );
 }
