@@ -1,4 +1,4 @@
-import { renderFinishScreen, updateDeleteButton } from "./render.js";
+import { updateDeleteButton } from "./render.js";
 import { checkIfShowDonationMsg } from "./storage.js";
 
 export const AppState = {
@@ -81,13 +81,12 @@ export function setUIState(newState, customMessage = null) {
       btnProcess.textContent = "Deleting...";
       break;
 
-    case AppState.DONATION_PROMPT:
-      // controls.classList.add("hidden"); // TODO Hidden?
-      // body.style.cursor = "default";
-      // btnProcess.disabled = false;
-      // btnCancel.disabled = false;
-      // btnProcess.textContent = "Finished";
-      renderFinishScreen();
+    case AppState.FINISHED_SHOW_DONATION:
+      controls.classList.add("hidden"); // TODO Hidden?
+      body.style.cursor = "default";
+      btnProcess.disabled = false;
+      btnCancel.disabled = false;
+      btnProcess.textContent = "Finished";
       break;
 
     // All done
@@ -111,7 +110,7 @@ export function setUIState(newState, customMessage = null) {
   }
 }
 
-// TODO SHould go in logic.js?
+// TODO SHould go in logic.js? nextBatch() ?
 export async function advanceState() {
   // Move to next batch
   appData.currentBatchIndex += appData.batchSize;
@@ -122,7 +121,10 @@ export async function advanceState() {
       appData.sessionDeletedCount,
     );
     if (showDonation) {
-      setUIState(AppState.DONATION_PROMPT, "Preparing donation prompt...");
+      setUIState(
+        AppState.FINISHED_SHOW_DONATION,
+        "Preparing donation prompt...",
+      );
     } else {
       setUIState(AppState.FINISHED, "Completed, no more duplicates.");
     }

@@ -1,4 +1,4 @@
-import { AppState, setUIState } from "./state.js";
+import { appData, AppState, setUIState } from "./state.js";
 import { wait } from "./utils.js";
 
 export async function fetchAllMessages(folder, recursive) {

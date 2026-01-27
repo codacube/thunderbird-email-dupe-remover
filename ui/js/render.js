@@ -1,7 +1,18 @@
 import { appData, AppState, setUIState } from "./state.js";
+import { wait } from "./utils.js";
 
-// TODO Show donation in here?
-export async function renderBatch() {
+export async function renderContainer() {
+  if (appData.currentState === AppState.FINISHED_SHOW_DONATION) {
+    renderFinishScreen();
+  } else if (appData.currentState === AppState.FINISHED) {
+    // TODO - Final screen without donation
+  } else {
+    await renderBatch();
+  }
+}
+
+// TODO check why async?
+async function renderBatch() {
   const container = document.getElementById("duplicate-list");
 
   try {
@@ -140,7 +151,7 @@ export function updateDeleteButton() {
 
 // Quick and dirty donation screen for testing
 // Get rid of magic numbers!
-export function renderFinishScreen() {
+function renderFinishScreen() {
   const container = document.getElementById("duplicate-list");
   const statusBar = document.getElementById("status-bar");
 

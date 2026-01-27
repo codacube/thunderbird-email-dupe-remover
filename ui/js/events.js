@@ -1,6 +1,6 @@
 import { appData, AppState, setUIState, advanceState } from "./state.js";
 import { fetchAllMessages, detectDuplicates, processBatch } from "./logic.js";
-import { renderBatch, updateDeleteButton } from "./render.js";
+import { renderContainer, updateDeleteButton } from "./render.js";
 import { updateStats } from "./storage.js";
 import { wait } from "./utils.js";
 
@@ -53,15 +53,19 @@ async function handleStartScan() {
     }
 
     appData.currentBatchIndex = 0;
-    renderBatch();
+    renderContainer();
   } catch (err) {
     setUIState(AppState.ERROR, "Error during scan: " + err.message);
   }
 }
 
 async function handleProcessClick() {
+  // TODO Should have a separate "Finish" button on last batch
   // Check if already finished and we need to exit
-  if (appData.currentState === AppState.FINISHED) {
+  if (
+    appData.currentState === AppState.FINISHED ||
+    appData.currentState === AppState.FINISHED_SHOW_DONATION
+  ) {
     closeTab();
     return;
   }
@@ -83,15 +87,8 @@ async function handleProcessClick() {
     appData.sessionDeletedCount += numDeleted;
     await updateStats(numDeleted);
 
-    // const showDonationMsg = await updateStatsAndCheckDonation(
-    //   totalDeletedThisSession,
-    // );
-    // console.log(
-    //   `Deleted ${totalDeletedThisSession} total messages this session. shouldPrompt: ${donationPrompt}`,
-    // );
-
     await advanceState();
-    renderBatch();
+    renderContainer();
   } catch (err) {
     setUIState(AppState.ERROR, "Error: " + err.message);
     // alert("Failed to delete messages.");
