@@ -86,7 +86,7 @@ export function setUIState(newState, customMessage = null) {
       body.style.cursor = "default";
       btnProcess.disabled = false;
       btnCancel.disabled = false;
-      btnProcess.textContent = "Finished";
+      btnProcess.textContent = "No thanks, maybe later";
       break;
 
     // All done

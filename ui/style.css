@@ -213,6 +213,27 @@ button:disabled {
   color: #333;
 }
 
+.donation-wrapper {
+  text-align: center;
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.donation-wrapper .donation-header {
+  max-width: 50%;
+}
+
+/* .donation-wrapper .donation-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+} */
+
 @media (max-width: 600px) {
   html {
     font-size: 55%;

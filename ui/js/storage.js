@@ -8,6 +8,12 @@ export async function updateStats(numDeleted) {
   return total;
 }
 
+// TODO Pass flag to return human friendly number (or have function in utils.js)
+export async function getTotalDeletedCount() {
+  const store = await browser.storage.local.get(["totalDeleted"]);
+  return store.totalDeleted || 0;
+}
+
 export async function checkIfShowDonationMsg(deletedThisSession) {
   const store = await browser.storage.local.get([
     "totalDeleted",

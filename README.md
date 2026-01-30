@@ -10,5 +10,5 @@
 
 ## TODO
 
-- Recursively search through folders
-- Check if Message-ID is the best method for finding duplicates
+- [ ] Tidy up all TODOs
+- [ ] Switch to Typescript?
