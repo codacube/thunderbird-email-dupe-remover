@@ -12,3 +12,4 @@
 
 - [ ] Tidy up all TODOs
 - [ ] Switch to Typescript?
+- [ ] Note that if you scan subfolders on a gmail imap, it will report back all the duplicated emails (that aren't actual duplicates, they have different labels on gmail)

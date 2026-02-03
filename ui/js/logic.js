@@ -1,5 +1,5 @@
 import { appData, AppState, setUIState } from "./state.js";
-import { wait } from "./utils.js";
+import { consoleLog, wait } from "./utils.js";
 
 export async function fetchAllMessages(folder, recursive) {
   let messages = [];
@@ -79,9 +79,12 @@ async function deleteMessages(
 
   // For debugging
   const deleteFunc = async (ids, bypassTrash = false) => {
-    if (appData.debugMode) {
+    if (appData.dryRun) {
       await wait(150); // Simulate delay
-      console.log(`[Debug] .... Deleting messages: ${ids.join(", ")}`);
+      consoleLog(
+        appData.debugMode,
+        `[Debug] .... Deleting messages: ${ids.join(", ")}`,
+      );
     } else {
       await messenger.messages.delete(ids, bypassTrash);
     }

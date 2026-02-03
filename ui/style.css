@@ -213,7 +213,7 @@ button:disabled {
   color: #333;
 }
 
-.donation-wrapper {
+.finished-wrapper {
   text-align: center;
   padding: 4rem;
   display: flex;
@@ -222,11 +222,11 @@ button:disabled {
   gap: 2.5rem;
 }
 
-.donation-wrapper .donation-header {
+.finished-wrapper .finished-header {
   max-width: 50%;
 }
 
-/* .donation-wrapper .donation-buttons {
+/* .finished-wrapper .finished-buttons {
   display: flex;
   justify-content: center;
   align-items: center;

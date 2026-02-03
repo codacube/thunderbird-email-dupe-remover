@@ -1,5 +1,8 @@
 import { updateDeleteButton } from "./render.js";
 import { checkIfShowDonationMsg } from "./storage.js";
+import { consoleLog } from "./utils.js";
+
+const DEBUGGING = true;
 
 export const AppState = {
   WAITING_TO_START: "WAITING_TO_START",
@@ -18,7 +21,9 @@ export const appData = {
   currentBatchIndex: 0,
   batchSize: 20,
   sessionDeletedCount: 0,
-  debugMode: true,
+  debugMode: DEBUGGING,
+  dryRun: DEBUGGING || false, // Don't delete any emails
+  disableDonationTimeCheck: true,
 };
 
 export function setUIState(newState, customMessage = null) {
@@ -29,13 +34,16 @@ export function setUIState(newState, customMessage = null) {
   if (newState === appData.currentState) {
     if (customMessage) {
       statusBar.textContent = customMessage;
-      console.log(`[State Update] Still ${newState}: "${customMessage}"`);
+      consoleLog(
+        appData.debugMode,
+        `[State Update] Still ${newState}: "${customMessage}"`,
+      );
     }
     return;
   }
 
   appData.currentState = newState;
-  console.log(`[State Change] -> ${newState}`);
+  consoleLog(appData.debugMode, `[State Change] -> ${newState}`);
 
   const controls = document.getElementById("scan-controls");
   const btnStart = document.getElementById("btn-start");
@@ -110,8 +118,8 @@ export function setUIState(newState, customMessage = null) {
   }
 }
 
-// TODO SHould go in logic.js? nextBatch() ?
-export async function advanceState() {
+// TODO Should go in logic.js?
+export async function nextBatch() {
   // Move to next batch
   appData.currentBatchIndex += appData.batchSize;
 
@@ -121,10 +129,7 @@ export async function advanceState() {
       appData.sessionDeletedCount,
     );
     if (showDonation) {
-      setUIState(
-        AppState.FINISHED_SHOW_DONATION,
-        "Preparing donation prompt...",
-      );
+      setUIState(AppState.FINISHED_SHOW_DONATION, "Awesome, cleanup complete!");
     } else {
       setUIState(AppState.FINISHED, "Completed, no more duplicates.");
     }

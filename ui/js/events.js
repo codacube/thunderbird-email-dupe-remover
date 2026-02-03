@@ -1,4 +1,4 @@
-import { appData, AppState, setUIState, advanceState } from "./state.js";
+import { appData, AppState, setUIState, nextBatch } from "./state.js";
 import { fetchAllMessages, detectDuplicates, processBatch } from "./logic.js";
 import { renderContainer, updateDeleteButton } from "./render.js";
 import { updateStats } from "./storage.js";
@@ -60,7 +60,6 @@ async function handleStartScan() {
 }
 
 async function handleProcessClick() {
-  // TODO Should have a separate "Finish" button on last batch
   // Check if already finished and we need to exit
   if (
     appData.currentState === AppState.FINISHED ||
@@ -87,7 +86,7 @@ async function handleProcessClick() {
     appData.sessionDeletedCount += numDeleted;
     await updateStats(numDeleted);
 
-    await advanceState();
+    await nextBatch();
     renderContainer();
   } catch (err) {
     setUIState(AppState.ERROR, "Error: " + err.message);

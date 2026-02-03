@@ -1,5 +1,5 @@
-import { appData, AppState, setUIState } from "./state.js";
-import { wait } from "./utils.js";
+import { appData, AppState } from "./state.js";
+import { consoleLog, wait, formatFriendly } from "./utils.js";
 import { getTotalDeletedCount } from "./storage.js";
 
 export async function renderContainer() {
@@ -12,24 +12,13 @@ export async function renderContainer() {
     container.innerHTML = ""; // Clear current view
 
     if (appData.currentState === AppState.FINISHED_SHOW_DONATION) {
-      renderFinishScreen();
+      renderFinished(true);
     } else if (appData.currentState === AppState.FINISHED) {
-      // TODO - Final screen without donation
+      renderFinished(false);
     } else {
       await renderBatch();
     }
   } finally {
-    // TODO - Force a Browser "Reflow" ??
-    // This is a trick: ask for offsetHeight so the browser acknowledges
-    // the element is there before trying to animate it again.
-    // Why?
-    // If you remove a class (opacity: 0) and immediately add it back (opacity: 1) in the same
-    // synchronous JavaScript block, the browser often "optimizes" the change away and just shows
-    // the final state without animating. By reading a property like offsetHeight, you force the
-    // browser to calculate the layout right now, ensuring it registers the "hidden" state before
-    // switching to the "visible" state.
-    void container.offsetHeight;
-
     container.classList.add("visible");
   }
 }
@@ -58,7 +47,8 @@ async function renderBatch() {
   document.getElementById("total-groups").textContent =
     appData.allDuplicateGroups.length;
 
-  console.log(
+  consoleLog(
+    appData.debugMode,
     `start: ${start} end: ${end} total: ${appData.allDuplicateGroups.length}`,
   );
 
@@ -132,10 +122,12 @@ export function updateDeleteButton() {
     appData.currentBatchIndex + appData.batchSize >=
     appData.allDuplicateGroups.length - 1;
   const actionSuffix = isLastBatch ? "Finish" : "Next";
-  console.log(
+  consoleLog(
+    appData.debugMode,
     `Updating delete button: ${checkedCount} checked, last batch: ${isLastBatch}`,
   );
-  console.log(
+  consoleLog(
+    appData.debugMode,
     `currentBatchIndex: ${appData.currentBatchIndex}, total groups: ${appData.allDuplicateGroups.length}`,
   );
 
@@ -148,26 +140,35 @@ export function updateDeleteButton() {
   }
 }
 
-// Quick and dirty donation screen for testing
-// Get rid of magic numbers!
-async function renderFinishScreen() {
+async function renderFinished(showDonation = false) {
   const container = document.getElementById("duplicate-list");
-  const statusBar = document.getElementById("status-bar");
   const allTimeTotal = await getTotalDeletedCount();
 
-  // 1. Update Status Bar
-  statusBar.textContent = "Awesome, cleanup complete!";
+  let sessionStatsHTML = "";
+  if (
+    appData.sessionDeletedCount !== 0 &&
+    appData.sessionDeletedCount !== allTimeTotal
+  ) {
+    sessionStatsHTML += `<p>...and in this session you've removed ${formatFriendly(appData.sessionDeletedCount)} duplicate emails.</p>`;
+  }
 
-  // 2. Render the 'Ask' inside the main container (or a modal)
-  container.innerHTML = `
-    <div class="donation-wrapper">
-      <div class="donation-header">
-        <h3>🎉 You've cleaned up ${allTimeTotal} emails! 🎉</h3>
-        <p>I build this free tool in my spare time. If I've saved you time and you find it useful, then please consider buying me a coffee.</p>
-      </div>
-      <div class="donation-buttons">
+  let donationButtonHTML = "";
+  let donationMsgHTML = "";
+  if (showDonation) {
+    donationMsgHTML = `<p>I build this free tool in my spare time. If I've saved you time and you find it useful, then please consider buying me a coffee.</p>`;
+    donationButtonHTML = `<div class="donation-buttons">
         <a href="https://www.buymeacoffee.com/codacube" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+      </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="finished-wrapper">
+      <div class="finished-header">
+        <h3>🎉 You've cleaned up a total of ${formatFriendly(allTimeTotal)} emails! 🎉</h3>
+        ${sessionStatsHTML}
+        ${donationMsgHTML}
       </div>
+      ${donationButtonHTML}
     </div>
   `;
 }
