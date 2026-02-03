@@ -1,25 +1,24 @@
 {
-    "manifest_version": 2,
-    "name": "Email Duplicate Remover",
-    "version": "2.0",
-    "description": "Scan for duplicate emails with review deletions with a UI.",
-    "permissions": [
-        "menus",
-        "messagesRead",
-        "messagesMove",
-        "messagesDelete",
-        "accountsRead",
-        "tabs"
-    ],
-    "background": {
-        "scripts": [
-            "background.js"
-        ]
-    },
-    "browser_specific_settings": {
-        "gecko": {
-            "id": "tb-email-dupe-remover@codacube.com",
-            "strict_min_version": "102.0"
-        }
+  "manifest_version": 2,
+  "name": "Email Duplicate Remover",
+  "version": "2.0",
+  "description": "Scan for duplicate emails with review deletions with a UI.",
+  "permissions": [
+    "menus",
+    "messagesRead",
+    "messagesMove",
+    "messagesDelete",
+    "accountsRead",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tb-email-dupe-remover@codacube.com",
+      "strict_min_version": "102.0"
     }
+  }
 }
