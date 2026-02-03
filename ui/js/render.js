@@ -3,7 +3,7 @@ import { consoleLog, wait, formatFriendly } from "./utils.js";
 import { getTotalDeletedCount } from "./storage.js";
 
 export async function renderContainer() {
-  const container = document.getElementById("duplicate-list");
+  const container = document.getElementById("results-container");
 
   try {
     container.classList.remove("visible");
@@ -24,7 +24,7 @@ export async function renderContainer() {
 }
 
 async function renderBatch() {
-  const container = document.getElementById("duplicate-list");
+  const container = document.getElementById("results-container");
 
   // If no duplicates found
   if (!appData.allDuplicateGroups || appData.allDuplicateGroups.length === 0) {
@@ -106,6 +106,7 @@ async function renderBatch() {
     .join("");
 
   container.innerHTML = batchesHTML;
+  container.scrollTop = 0;
 
   // Set the initial state of the Delete button
   updateDeleteButton();
@@ -141,7 +142,7 @@ export function updateDeleteButton() {
 }
 
 async function renderFinished(showDonation = false) {
-  const container = document.getElementById("duplicate-list");
+  const container = document.getElementById("results-container");
   const allTimeTotal = await getTotalDeletedCount();
 
   let sessionStatsHTML = "";

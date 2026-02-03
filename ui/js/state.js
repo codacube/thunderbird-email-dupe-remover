@@ -118,7 +118,6 @@ export function setUIState(newState, customMessage = null) {
   }
 }
 
-// TODO Should go in logic.js?
 export async function nextBatch() {
   // Move to next batch
   appData.currentBatchIndex += appData.batchSize;
@@ -135,7 +134,5 @@ export async function nextBatch() {
     }
   } else {
     setUIState(AppState.IDLE, "Batch processed. Ready for next.");
-    // Scroll to top
-    document.getElementById("duplicate-list").scrollTop = 0;
   }
 }

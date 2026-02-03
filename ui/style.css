@@ -15,11 +15,11 @@ body {
 
 .container {
   max-width: 110rem;
+  min-width: 25rem;
   margin: 0 auto;
   background: white;
   box-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.1);
   border-radius: 0.8rem;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 95vh; /* Full height window */
@@ -87,7 +87,7 @@ h1 {
   font-weight: 500;
 }
 
-#duplicate-list {
+#results-container {
   opacity: 0;
   transform: translateY(2rem);
   transition:
@@ -98,7 +98,7 @@ h1 {
   padding: 2rem;
 }
 
-#duplicate-list.visible {
+#results-container.visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -117,6 +117,7 @@ h1 {
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
+  /* flex-wrap: wrap; / * Allow items to wrap on narrow screens ADDED */
 }
 
 .message-row {
@@ -125,6 +126,7 @@ h1 {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #eee;
   font-size: 1.4rem;
+  cursor: pointer;
 }
 
 .message-row:last-child {
@@ -171,6 +173,8 @@ footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* flex-wrap: wrap; / * Allow items to wrap on narrow screens ADDED */
+  /* gap: 1rem; / * Add spacing for when it wraps ADDED */
 }
 
 .actions {
@@ -250,7 +254,7 @@ button:disabled {
 
   header,
   footer,
-  #duplicate-list {
+  #results-container {
     padding: 1.5rem; /* Tighter padding inside */
   }
 

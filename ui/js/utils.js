@@ -1,6 +1,6 @@
 export const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// TODO isDebug should be a level, but will leave boolean for now
+// isDebug should be an enum level, but will leave boolean for now
 export const consoleLog = (isDebug, message) => {
   if (isDebug) {
     console.log(`${message}`);

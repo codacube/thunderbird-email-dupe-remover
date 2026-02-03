@@ -5,7 +5,23 @@ import { updateStats } from "./storage.js";
 import { wait } from "./utils.js";
 
 export function registerUIEventListeners() {
-  const listContainer = document.getElementById("duplicate-list");
+  const listContainer = document.getElementById("results-container");
+
+  listContainer.addEventListener("click", (e) => {
+    // Ignore the actual checkbox, it's handled in another listener
+    if (e.target.matches(".dupe-checkbox")) {
+      return;
+    }
+
+    const row = e.target.closest(".message-row");
+    if (row) {
+      const checkbox = row.querySelector(".dupe-checkbox");
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        handleCheckboxChange(checkbox);
+      }
+    }
+  });
 
   // Buttons
   document
