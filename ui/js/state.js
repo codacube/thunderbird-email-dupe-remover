@@ -2,7 +2,7 @@ import { updateDeleteButton } from "./render.js";
 import { checkIfShowDonationMsg } from "./storage.js";
 import { consoleLog } from "./utils.js";
 
-const DEBUGGING = true;
+const DEBUGGING = false;
 
 export const AppState = {
   WAITING_TO_START: "WAITING_TO_START",
