@@ -145,6 +145,16 @@ async function renderFinished(showDonation = false) {
   const container = document.getElementById("results-container");
   const allTimeTotal = await getTotalDeletedCount();
 
+  // <div style='text-align:center; padding:40px;'>
+  // </div>
+
+  let overallMsgHTML = "";
+  if (!appData.allDuplicateGroups || appData.allDuplicateGroups.length === 0) {
+    overallMsgHTML = `<h3>No Duplicates Found</h3><p>There are no duplicate emails in this folder.</p>`;
+  } else {
+    overallMsgHTML = `<h3>🎉 You've cleaned up a total of ${formatFriendly(allTimeTotal)} emails! 🎉</h3>`;
+  }
+
   let sessionStatsHTML = "";
   if (
     appData.sessionDeletedCount !== 0 &&
@@ -165,7 +175,7 @@ async function renderFinished(showDonation = false) {
   container.innerHTML = `
     <div class="finished-wrapper">
       <div class="finished-header">
-        <h3>🎉 You've cleaned up a total of ${formatFriendly(allTimeTotal)} emails! 🎉</h3>
+        ${overallMsgHTML}
         ${sessionStatsHTML}
         ${donationMsgHTML}
       </div>

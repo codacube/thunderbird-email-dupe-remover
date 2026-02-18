@@ -1,6 +1,6 @@
 messenger.menus.create({
   id: "scan-duplicates",
-  title: "Scan for Duplicates...",
+  title: "Cleanup duplicates...",
   contexts: ["folder_pane"],
 });
 

@@ -103,6 +103,7 @@ export function setUIState(newState, customMessage = null) {
       body.style.cursor = "default";
       btnProcess.disabled = false;
       btnCancel.disabled = false;
+      btnCancel.style.visibility = "hidden";
       btnProcess.textContent = "Finished";
       break;
 
